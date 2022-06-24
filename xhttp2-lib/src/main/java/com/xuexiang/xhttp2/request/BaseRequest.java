@@ -45,6 +45,7 @@ import com.xuexiang.xhttp2.transform.HttpSchedulersTransformer;
 import com.xuexiang.xhttp2.transform.func.ApiResultFunc;
 import com.xuexiang.xhttp2.transform.func.CacheResultFunc;
 import com.xuexiang.xhttp2.transform.func.RetryExceptionFunc;
+import com.xuexiang.xhttp2.utils.CertUtils;
 import com.xuexiang.xhttp2.utils.Utils;
 
 import java.io.File;
@@ -194,6 +195,10 @@ public abstract class BaseRequest<R extends BaseRequest> {
     //====Https设置=====//
     protected HttpsUtils.SSLParams mSSLParams;
     protected HostnameVerifier mHostnameVerifier;
+    /**
+     * 忽略https证书
+     */
+    private boolean mIgnoreHttpsCert = false;
     //====Cookie设置=====//
     /**
      * 用户手动添加的Cookie
@@ -633,6 +638,7 @@ public abstract class BaseRequest<R extends BaseRequest> {
         mProxy = proxy;
         return (R) this;
     }
+
     /**
      * 设置代理的鉴权账号密码
      */
@@ -686,6 +692,14 @@ public abstract class BaseRequest<R extends BaseRequest> {
     //===========================================//
     //                Https设置                   //
     //===========================================//
+
+    /**
+     * 忽略https证书
+     */
+    public R ignoreHttpsCert() {
+        mIgnoreHttpsCert = true;
+        return (R) this;
+    }
 
     /**
      * https的全局访问规则
@@ -747,8 +761,7 @@ public abstract class BaseRequest<R extends BaseRequest> {
      * 根据当前的请求参数，生成对应的OkClient
      */
     private OkHttpClient.Builder generateOkClient() {
-        if (mReadTimeOut <= 0 && mWriteTimeOut <= 0 && mConnectTimeout <= 0 && mSSLParams == null
-                && mCookies.size() == 0 && mHostnameVerifier == null && mProxy == null && mProxyAuthenticator == null && mHeaders.isEmpty()) {
+        if (mReadTimeOut <= 0 && mWriteTimeOut <= 0 && mConnectTimeout <= 0 && mSSLParams == null && mCookies.size() == 0 && mHostnameVerifier == null && mIgnoreHttpsCert == false && mProxy == null && mProxyAuthenticator == null && mHeaders.isEmpty()) {
             OkHttpClient.Builder builder = XHttp.getOkHttpClientBuilder();
             for (Interceptor interceptor : builder.interceptors()) {
                 if (interceptor instanceof BaseDynamicInterceptor) {
@@ -767,11 +780,16 @@ public abstract class BaseRequest<R extends BaseRequest> {
             if (mConnectTimeout > 0) {
                 newClientBuilder.connectTimeout(mConnectTimeout, TimeUnit.MILLISECONDS);
             }
-            if (mHostnameVerifier != null) {
-                newClientBuilder.hostnameVerifier(mHostnameVerifier);
-            }
-            if (mSSLParams != null) {
-                newClientBuilder.sslSocketFactory(mSSLParams.sSLSocketFactory, mSSLParams.trustManager);
+            if (mIgnoreHttpsCert) {
+                newClientBuilder.hostnameVerifier(CertUtils.getHostnameVerifier());
+                newClientBuilder.sslSocketFactory(CertUtils.getSslSocketFactory(), CertUtils.getX509TrustManager());
+            } else {
+                if (mHostnameVerifier != null) {
+                    newClientBuilder.hostnameVerifier(mHostnameVerifier);
+                }
+                if (mSSLParams != null) {
+                    newClientBuilder.sslSocketFactory(mSSLParams.sSLSocketFactory, mSSLParams.trustManager);
+                }
             }
             if (mProxy != null) {
                 newClientBuilder.proxy(mProxy);
@@ -877,14 +895,11 @@ public abstract class BaseRequest<R extends BaseRequest> {
                 mInterceptors.add(new NoCacheInterceptor());
                 if (mDiskConverter == null) {
                     final RxCache.Builder tempRxCacheBuilder = rxCacheBuilder;
-                    tempRxCacheBuilder.cacheKey(Utils.checkNotNull(mCacheKey, "mCacheKey == null"))
-                            .cacheTime(mCacheTime);
+                    tempRxCacheBuilder.cacheKey(Utils.checkNotNull(mCacheKey, "mCacheKey == null")).cacheTime(mCacheTime);
                     return tempRxCacheBuilder;
                 } else {
                     final RxCache.Builder cacheBuilder = XHttp.getRxCache().newBuilder();
-                    cacheBuilder.diskConverter(mDiskConverter)
-                            .cacheKey(Utils.checkNotNull(mCacheKey, "mCacheKey == null"))
-                            .cacheTime(mCacheTime);
+                    cacheBuilder.diskConverter(mDiskConverter).cacheKey(Utils.checkNotNull(mCacheKey, "mCacheKey == null")).cacheTime(mCacheTime);
                     return cacheBuilder;
                 }
             default:
@@ -943,11 +958,7 @@ public abstract class BaseRequest<R extends BaseRequest> {
      */
     protected <T> Observable<CacheResult<T>> toObservable(Observable observable, CallBackProxy<? extends ApiResult<T>, T> proxy) {
         return observable.map(new ApiResultFunc(proxy != null ? proxy.getType() : new TypeToken<ResponseBody>() {
-        }.getType(), mKeepJson))
-                .compose(new HttpResultTransformer())
-                .compose(new HttpSchedulersTransformer(mIsSyncRequest, mIsOnMainThread))
-                .compose(mRxCache.transformer(mCacheMode, proxy.getCallBack().getType()))
-                .retryWhen(new RetryExceptionFunc(mRetryCount, mRetryDelay, mRetryIncreaseDelay));
+        }.getType(), mKeepJson)).compose(new HttpResultTransformer()).compose(new HttpSchedulersTransformer(mIsSyncRequest, mIsOnMainThread)).compose(mRxCache.transformer(mCacheMode, proxy.getCallBack().getType())).retryWhen(new RetryExceptionFunc(mRetryCount, mRetryDelay, mRetryIncreaseDelay));
     }
 
     /**
@@ -979,18 +990,12 @@ public abstract class BaseRequest<R extends BaseRequest> {
      * @return
      */
     public <T> Observable<T> execute(CallClazzProxy<? extends ApiResult<T>, T> proxy) {
-        return build().generateRequest()
-                .map(new ApiResultFunc(proxy.getType(), mKeepJson))
-                .compose(new HttpResultTransformer())
-                .compose(new HttpSchedulersTransformer(mIsSyncRequest, mIsOnMainThread))
-                .compose(mRxCache.transformer(mCacheMode, proxy.getCallType()))
-                .retryWhen(new RetryExceptionFunc(mRetryCount, mRetryDelay, mRetryIncreaseDelay))
-                .compose(new ObservableTransformer() {
-                    @Override
-                    public ObservableSource apply(@NonNull Observable upstream) {
-                        return upstream.map(new CacheResultFunc<T>());
-                    }
-                });
+        return build().generateRequest().map(new ApiResultFunc(proxy.getType(), mKeepJson)).compose(new HttpResultTransformer()).compose(new HttpSchedulersTransformer(mIsSyncRequest, mIsOnMainThread)).compose(mRxCache.transformer(mCacheMode, proxy.getCallType())).retryWhen(new RetryExceptionFunc(mRetryCount, mRetryDelay, mRetryIncreaseDelay)).compose(new ObservableTransformer() {
+            @Override
+            public ObservableSource apply(@NonNull Observable upstream) {
+                return upstream.map(new CacheResultFunc<T>());
+            }
+        });
     }
 
 }
