@@ -63,12 +63,7 @@ import io.reactivex.ObservableSource;
 import io.reactivex.ObservableTransformer;
 import io.reactivex.annotations.NonNull;
 import io.reactivex.disposables.Disposable;
-import okhttp3.Cache;
-import okhttp3.Cookie;
-import okhttp3.HttpUrl;
-import okhttp3.Interceptor;
-import okhttp3.OkHttpClient;
-import okhttp3.ResponseBody;
+import okhttp3.*;
 import retrofit2.CallAdapter;
 import retrofit2.Converter;
 import retrofit2.Retrofit;
@@ -185,6 +180,7 @@ public abstract class BaseRequest<R extends BaseRequest> {
     //====OkHttpClient的拦截器、代理等=====//
     protected OkHttpClient mOkHttpClient;
     protected Proxy mProxy;
+    protected Authenticator mProxyAuthenticator;
     protected final List<Interceptor> mNetworkInterceptors = new ArrayList<>();
     protected final List<Interceptor> mInterceptors = new ArrayList<>();
     //====Retrofit的Api、Factory=====//
@@ -637,6 +633,13 @@ public abstract class BaseRequest<R extends BaseRequest> {
         mProxy = proxy;
         return (R) this;
     }
+    /**
+     * 设置代理的鉴权账号密码
+     */
+    public R okproxyAuthenticator(Authenticator proxyAuthenticator) {
+        mProxyAuthenticator = proxyAuthenticator;
+        return (R) this;
+    }
 
     /**
      * 增加应用拦截器
@@ -745,7 +748,7 @@ public abstract class BaseRequest<R extends BaseRequest> {
      */
     private OkHttpClient.Builder generateOkClient() {
         if (mReadTimeOut <= 0 && mWriteTimeOut <= 0 && mConnectTimeout <= 0 && mSSLParams == null
-                && mCookies.size() == 0 && mHostnameVerifier == null && mProxy == null && mHeaders.isEmpty()) {
+                && mCookies.size() == 0 && mHostnameVerifier == null && mProxy == null && mProxyAuthenticator == null && mHeaders.isEmpty()) {
             OkHttpClient.Builder builder = XHttp.getOkHttpClientBuilder();
             for (Interceptor interceptor : builder.interceptors()) {
                 if (interceptor instanceof BaseDynamicInterceptor) {
@@ -772,6 +775,9 @@ public abstract class BaseRequest<R extends BaseRequest> {
             }
             if (mProxy != null) {
                 newClientBuilder.proxy(mProxy);
+            }
+            if (mProxyAuthenticator != null) {
+                newClientBuilder.proxyAuthenticator(mProxyAuthenticator);
             }
             if (mCookies.size() > 0) {
                 XHttp.getCookieJar().addCookies(mCookies);
