@@ -17,6 +17,7 @@
 package com.xuexiang.xhttp2.request;
 
 import android.content.Context;
+import android.os.Build;
 import android.text.TextUtils;
 
 import com.google.gson.reflect.TypeToken;
@@ -46,6 +47,7 @@ import com.xuexiang.xhttp2.transform.func.ApiResultFunc;
 import com.xuexiang.xhttp2.transform.func.CacheResultFunc;
 import com.xuexiang.xhttp2.transform.func.RetryExceptionFunc;
 import com.xuexiang.xhttp2.utils.CertUtils;
+import com.xuexiang.xhttp2.utils.SSLSocketFactoryCompat;
 import com.xuexiang.xhttp2.utils.Utils;
 
 import java.io.File;
@@ -58,6 +60,8 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import javax.net.ssl.HostnameVerifier;
+import javax.net.ssl.SSLSocketFactory;
+import javax.net.ssl.X509TrustManager;
 
 import io.reactivex.Observable;
 import io.reactivex.ObservableSource;
@@ -71,6 +75,8 @@ import retrofit2.Retrofit;
 import retrofit2.adapter.rxjava2.RxJava2CallAdapterFactory;
 
 import static com.xuexiang.xhttp2.XHttp.DEFAULT_CACHE_NEVER_EXPIRE;
+
+import java.security.cert.CertificateException;
 
 /**
  * 所有请求的基类
@@ -780,9 +786,31 @@ public abstract class BaseRequest<R extends BaseRequest> {
             if (mConnectTimeout > 0) {
                 newClientBuilder.connectTimeout(mConnectTimeout, TimeUnit.MILLISECONDS);
             }
-            if (mIgnoreHttpsCert) {
-                newClientBuilder.hostnameVerifier(CertUtils.getHostnameVerifier());
-                newClientBuilder.sslSocketFactory(CertUtils.getSslSocketFactory(), CertUtils.getX509TrustManager());
+            if (mIgnoreHttpsCert || Build.VERSION.SDK_INT < 22) {
+                //newClientBuilder.hostnameVerifier(CertUtils.getHostnameVerifier());
+                //newClientBuilder.sslSocketFactory(CertUtils.getSslSocketFactory(), CertUtils.getX509TrustManager());
+                try {
+                    // 自定义一个信任所有证书的TrustManager，添加SSLSocketFactory的时候要用到
+                    final X509TrustManager trustAllCert = new X509TrustManager() {
+                        @Override
+                        public void checkClientTrusted(java.security.cert.X509Certificate[] chain, String authType) throws CertificateException {
+                        }
+
+                        @Override
+                        public void checkServerTrusted(java.security.cert.X509Certificate[] chain, String authType) throws CertificateException {
+                        }
+
+                        @Override
+                        public java.security.cert.X509Certificate[] getAcceptedIssuers() {
+                            return new java.security.cert.X509Certificate[]{};
+                        }
+                    };
+                    final SSLSocketFactory sslSocketFactory = new SSLSocketFactoryCompat(trustAllCert);
+                    newClientBuilder.sslSocketFactory(sslSocketFactory, trustAllCert);
+                } catch (Exception e) {
+                    //throw new RuntimeException(e);
+                    e.printStackTrace();
+                }
             } else {
                 if (mHostnameVerifier != null) {
                     newClientBuilder.hostnameVerifier(mHostnameVerifier);
