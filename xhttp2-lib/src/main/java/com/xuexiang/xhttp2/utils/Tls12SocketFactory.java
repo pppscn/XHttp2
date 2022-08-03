@@ -20,7 +20,7 @@ import javax.net.ssl.SSLSocketFactory;
  * @see SSLSocketFactory
  **/
 public class Tls12SocketFactory extends SSLSocketFactory {
-    private static final String[] TLS_V12_ONLY = {"TLSv1.2"};
+    private static final String[] TLS_V12_ONLY = {"TLSv1.1", "TLSv1.2", "TLSv1.3"};
 
     final SSLSocketFactory delegate;
 
