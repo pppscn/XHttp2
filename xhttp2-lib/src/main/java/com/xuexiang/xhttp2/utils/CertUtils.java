@@ -2,7 +2,6 @@ package com.xuexiang.xhttp2.utils;
 
 import android.annotation.SuppressLint;
 
-import java.security.GeneralSecurityException;
 import java.security.KeyStore;
 import java.security.SecureRandom;
 import java.security.cert.X509Certificate;
@@ -75,9 +74,6 @@ public class CertUtils {
                 throw new IllegalStateException("Unexpected default trust managers:" + Arrays.toString(trustManagers));
             }
             trustManager = (X509TrustManager) trustManagers[0];
-        } catch (GeneralSecurityException e) {
-            // The system has no TLS. Just give up.
-            throw new AssertionError();
         } catch (Exception e) {
             e.printStackTrace();
         }
