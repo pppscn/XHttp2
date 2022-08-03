@@ -17,8 +17,10 @@
 package com.xuexiang.xhttp2.request;
 
 import android.content.Context;
+import android.os.Build;
 import android.text.TextUtils;
 
+import android.util.Log;
 import com.google.gson.reflect.TypeToken;
 import com.xuexiang.xhttp2.XHttp;
 import com.xuexiang.xhttp2.annotation.ThreadType;
@@ -46,6 +48,7 @@ import com.xuexiang.xhttp2.transform.func.ApiResultFunc;
 import com.xuexiang.xhttp2.transform.func.CacheResultFunc;
 import com.xuexiang.xhttp2.transform.func.RetryExceptionFunc;
 import com.xuexiang.xhttp2.utils.CertUtils;
+import com.xuexiang.xhttp2.utils.Tls12SocketFactory;
 import com.xuexiang.xhttp2.utils.Utils;
 
 import java.io.File;
@@ -58,6 +61,7 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import javax.net.ssl.HostnameVerifier;
+import javax.net.ssl.SSLContext;
 
 import io.reactivex.Observable;
 import io.reactivex.ObservableSource;
@@ -921,7 +925,7 @@ public abstract class BaseRequest<R extends BaseRequest> {
         }
         final Retrofit.Builder retrofitBuilder = generateRetrofit();
         retrofitBuilder.addCallAdapterFactory(RxJava2CallAdapterFactory.create());//增加RxJavaCallAdapterFactory
-        mOkHttpClient = okHttpClientBuilder.build();
+        mOkHttpClient = enableTls12OnPreLollipop(okHttpClientBuilder).build();
         retrofitBuilder.client(mOkHttpClient);
         mRetrofit = retrofitBuilder.build();
         mRxCache = rxCacheBuilder.build();
@@ -998,5 +1002,29 @@ public abstract class BaseRequest<R extends BaseRequest> {
         });
     }
 
+    public static OkHttpClient.Builder enableTls12OnPreLollipop(OkHttpClient.Builder client) {
+        if (Build.VERSION.SDK_INT >= 16 && Build.VERSION.SDK_INT < 22) {
+            try {
+                SSLContext sc = SSLContext.getInstance("TLSv1.2");
+                sc.init(null, null, null);
+                client.sslSocketFactory(new Tls12SocketFactory(sc.getSocketFactory()));
+
+                ConnectionSpec cs = new ConnectionSpec.Builder(ConnectionSpec.MODERN_TLS)
+                        .tlsVersions(TlsVersion.TLS_1_2)
+                        .build();
+
+                List<ConnectionSpec> specs = new ArrayList<>();
+                specs.add(cs);
+                specs.add(ConnectionSpec.COMPATIBLE_TLS);
+                specs.add(ConnectionSpec.CLEARTEXT);
+
+                client.connectionSpecs(specs);
+            } catch (Exception exc) {
+                Log.e("OkHttpTLSCompat", "Error while setting TLS 1.2", exc);
+            }
+        }
+
+        return client;
+    }
 }
 
