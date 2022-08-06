@@ -36,7 +36,7 @@ dependencies {
     compileOnly deps.rxjava2
     compileOnly deps.rxandroid
     //OkHttp的依赖包
-    compileOnly 'com.squareup.okhttp3:okhttp:3.14.9'
+    compileOnly 'com.squareup.okhttp3:okhttp:3.12.13'
     //Gson序列化反序列化的依赖包
     compileOnly deps.gson
 
