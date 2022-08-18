@@ -48,20 +48,25 @@ import com.xuexiang.xhttp2.transform.func.ApiResultFunc;
 import com.xuexiang.xhttp2.transform.func.CacheResultFunc;
 import com.xuexiang.xhttp2.transform.func.RetryExceptionFunc;
 import com.xuexiang.xhttp2.utils.CertUtils;
-import com.xuexiang.xhttp2.utils.Tls12SocketFactory;
+import com.xuexiang.xhttp2.utils.InternalSslSocketFactory;
 import com.xuexiang.xhttp2.utils.Utils;
 
 import java.io.File;
 import java.io.InputStream;
 import java.lang.reflect.Type;
 import java.net.Proxy;
+import java.security.Provider;
+import java.security.Security;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.X509TrustManager;
 
 import io.reactivex.Observable;
 import io.reactivex.ObservableSource;
@@ -69,6 +74,7 @@ import io.reactivex.ObservableTransformer;
 import io.reactivex.annotations.NonNull;
 import io.reactivex.disposables.Disposable;
 import okhttp3.*;
+import org.conscrypt.Conscrypt;
 import retrofit2.CallAdapter;
 import retrofit2.Converter;
 import retrofit2.Retrofit;
@@ -1005,22 +1011,18 @@ public abstract class BaseRequest<R extends BaseRequest> {
     public static OkHttpClient.Builder enableTls12OnPreLollipop(OkHttpClient.Builder client) {
         if (Build.VERSION.SDK_INT >= 16 && Build.VERSION.SDK_INT < 22) {
             try {
-                SSLContext sc = SSLContext.getInstance("TLSv1.2");
-                sc.init(null, null, null);
-                client.sslSocketFactory(new Tls12SocketFactory(sc.getSocketFactory()));
+                // Init Conscrypt
+                Provider conscrypt = Conscrypt.newProvider();
+                // Add as provider
+                Security.insertProviderAt(conscrypt, 1);
 
-                ConnectionSpec cs = new ConnectionSpec.Builder(ConnectionSpec.MODERN_TLS)
-                        .tlsVersions(TlsVersion.TLS_1_2)
-                        .build();
-
-                List<ConnectionSpec> specs = new ArrayList<>();
-                specs.add(cs);
-                specs.add(ConnectionSpec.COMPATIBLE_TLS);
-                specs.add(ConnectionSpec.CLEARTEXT);
-
-                client.connectionSpecs(specs);
-            } catch (Exception exc) {
-                Log.e("OkHttpTLSCompat", "Error while setting TLS 1.2", exc);
+                client.connectionSpecs(Collections.singletonList(ConnectionSpec.RESTRICTED_TLS));
+                X509TrustManager tm = Conscrypt.getDefaultX509TrustManager();
+                SSLContext sslContext = SSLContext.getInstance("TLS", conscrypt);
+                sslContext.init(null, new TrustManager[]{tm}, null);
+                client.sslSocketFactory(new InternalSslSocketFactory(sslContext.getSocketFactory()), tm);
+            } catch (Exception e) {
+                e.printStackTrace();
             }
         }
 
