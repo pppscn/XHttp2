@@ -55,6 +55,7 @@ public @interface NetMethod {
     String POST = "post";
     String GET = "get";
     String PUT = "put";
+    String PATCH = "patch";
     String DELETE = "delete";
 
     /**

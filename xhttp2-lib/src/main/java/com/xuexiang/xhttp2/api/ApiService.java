@@ -23,20 +23,7 @@ import io.reactivex.Observable;
 import okhttp3.MultipartBody;
 import okhttp3.RequestBody;
 import okhttp3.ResponseBody;
-import retrofit2.http.Body;
-import retrofit2.http.DELETE;
-import retrofit2.http.FieldMap;
-import retrofit2.http.FormUrlEncoded;
-import retrofit2.http.GET;
-import retrofit2.http.Headers;
-import retrofit2.http.Multipart;
-import retrofit2.http.POST;
-import retrofit2.http.PUT;
-import retrofit2.http.Part;
-import retrofit2.http.PartMap;
-import retrofit2.http.QueryMap;
-import retrofit2.http.Streaming;
-import retrofit2.http.Url;
+import retrofit2.http.*;
 
 /**
  * 通用的的api接口
@@ -105,6 +92,24 @@ public interface ApiService {
     @PUT
     @Headers({"Content-Type: application/json", "Accept: application/json"})
     Observable<ResponseBody> putJson(@Url String url, @Body RequestBody jsonBody);
+
+
+    //==========================//
+    //         PATCH请求           //
+    // =========================//
+
+    @PATCH
+    Observable<ResponseBody> patch(@Url String url, @QueryMap Map<String, Object> maps);
+
+    @PATCH
+    Observable<ResponseBody> patchBody(@Url String url, @Body Object object);
+
+    @PATCH
+    Observable<ResponseBody> patchBody(@Url String url, @Body RequestBody body);
+
+    @PATCH
+    @Headers({"Content-Type: application/json", "Accept: application/json"})
+    Observable<ResponseBody> patchJson(@Url String url, @Body RequestBody jsonBody);
 
 
     //==========================//

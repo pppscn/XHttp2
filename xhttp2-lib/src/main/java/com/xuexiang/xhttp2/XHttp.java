@@ -17,12 +17,7 @@ import com.xuexiang.xhttp2.interceptor.HttpLoggingInterceptor;
 import com.xuexiang.xhttp2.logs.HttpLog;
 import com.xuexiang.xhttp2.model.HttpHeaders;
 import com.xuexiang.xhttp2.model.HttpParams;
-import com.xuexiang.xhttp2.request.CustomRequest;
-import com.xuexiang.xhttp2.request.DeleteRequest;
-import com.xuexiang.xhttp2.request.DownloadRequest;
-import com.xuexiang.xhttp2.request.GetRequest;
-import com.xuexiang.xhttp2.request.PostRequest;
-import com.xuexiang.xhttp2.request.PutRequest;
+import com.xuexiang.xhttp2.request.*;
 import com.xuexiang.xhttp2.utils.RxSchedulers;
 import com.xuexiang.xhttp2.utils.Utils;
 
@@ -744,6 +739,13 @@ public final class XHttp {
      */
     public static PutRequest put(String url) {
         return new PutRequest(url);
+    }
+
+    /**
+     * @return patch请求
+     */
+    public static PatchRequest patch(String url) {
+        return new PatchRequest(url);
     }
 
     /**

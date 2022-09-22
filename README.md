@@ -32,7 +32,7 @@
 * 支持默认、全局、局部三个层次的配置功能。
 * 支持动态配置和自定义底层框架OkHttpClient、Retrofit.
 * 加入基础ApiService，减少Api冗余。
-* 支持多种方式访问网络GET、POST、PUT、DELETE等请求协议。
+* 支持多种方式访问网络GET、POST、PUT、DELETE、PATCH等请求协议。
 * 支持网络缓存,六种缓存策略可选,涵盖大多数业务场景。
 * 支持固定添加header和动态添加header。
 * 支持添加全局参数和动态添加局部参数。
@@ -196,7 +196,7 @@ setStrictMode | 设置严格模式，在严格模式下，json返回的data数�
 
 ### 1、使用XHttp默认api进行请求
 
-1.使用XHttp.post、XHttp.get、XHttp.delete、XHttp.put、XHttp.downLoad构建请求。
+1.使用XHttp.post、XHttp.get、XHttp.delete、XHttp.put、XHttp.patch、XHttp.downLoad构建请求。
 
 2.修改request的请求参数。
 

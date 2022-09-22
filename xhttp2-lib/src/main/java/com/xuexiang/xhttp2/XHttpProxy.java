@@ -37,9 +37,7 @@ import java.lang.reflect.Type;
 import java.util.Map;
 import java.util.TreeMap;
 
-import static com.xuexiang.xhttp2.annotation.NetMethod.GET;
-import static com.xuexiang.xhttp2.annotation.NetMethod.POST;
-import static com.xuexiang.xhttp2.annotation.NetMethod.PUT;
+import static com.xuexiang.xhttp2.annotation.NetMethod.*;
 
 /**
  * 网络请求代理[这里只是一种演示，可以模仿着自定义]
@@ -185,6 +183,9 @@ public class XHttpProxy implements InvocationHandler {
                 break;
             case PUT:
                 request = XHttp.put(url);
+                break;
+            case PATCH:
+                request = XHttp.patch(url);
                 break;
             default:
                 request = XHttp.delete(url);
