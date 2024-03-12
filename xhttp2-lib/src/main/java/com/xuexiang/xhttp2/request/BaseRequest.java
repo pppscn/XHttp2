@@ -21,6 +21,7 @@ import android.os.Build;
 import android.text.TextUtils;
 
 import android.util.Log;
+
 import com.google.gson.reflect.TypeToken;
 import com.xuexiang.xhttp2.XHttp;
 import com.xuexiang.xhttp2.annotation.ThreadType;
@@ -58,6 +59,7 @@ import java.net.Proxy;
 import java.security.Provider;
 import java.security.Security;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -74,7 +76,9 @@ import io.reactivex.ObservableTransformer;
 import io.reactivex.annotations.NonNull;
 import io.reactivex.disposables.Disposable;
 import okhttp3.*;
+
 import org.conscrypt.Conscrypt;
+
 import retrofit2.CallAdapter;
 import retrofit2.Converter;
 import retrofit2.Retrofit;
@@ -1011,16 +1015,22 @@ public abstract class BaseRequest<R extends BaseRequest> {
     public static OkHttpClient.Builder enableTls12OnPreLollipop(OkHttpClient.Builder client) {
         if (Build.VERSION.SDK_INT >= 16 && Build.VERSION.SDK_INT < 22) {
             try {
-                // Init Conscrypt
+                //让 Android 4.4 支持 TLS 1.3
                 Provider conscrypt = Conscrypt.newProvider();
-                // Add as provider
                 Security.insertProviderAt(conscrypt, 1);
-
                 client.connectionSpecs(Collections.singletonList(ConnectionSpec.RESTRICTED_TLS));
                 X509TrustManager tm = Conscrypt.getDefaultX509TrustManager();
                 SSLContext sslContext = SSLContext.getInstance("TLS", conscrypt);
                 sslContext.init(null, new TrustManager[]{tm}, null);
                 client.sslSocketFactory(new InternalSslSocketFactory(sslContext.getSocketFactory()), tm);
+                //解决在Android5.0版本以下https无法访问
+                ConnectionSpec spec1 = new ConnectionSpec.Builder(ConnectionSpec.COMPATIBLE_TLS)
+                        .tlsVersions(TlsVersion.TLS_1_2, TlsVersion.TLS_1_1, TlsVersion.TLS_1_0)
+                        .allEnabledCipherSuites()
+                        .build();
+                //兼容http接口
+                ConnectionSpec spec2 = new ConnectionSpec.Builder(ConnectionSpec.CLEARTEXT).build();
+                client.connectionSpecs(Arrays.asList(spec1, spec2));
             } catch (Exception e) {
                 e.printStackTrace();
             }
